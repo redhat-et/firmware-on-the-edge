@@ -1,34 +1,43 @@
 
 # Firmware examples
 
-This folder contains firmware examples to allow USB based
-peripherals to be updated from RHEL.
+This repository contains firmware update examples for USB-based peripherals on RHEL systems.
 
-We use the [STM32F103](https://www.st.com/en/microcontrollers-microprocessors/stm32f103.html)
-microcontroller and the [Rust](https://www.rust-lang.org/) language, but the techniques apply to other languages.
+These examples utilize the [STM32F103](https://www.st.com/en/microcontrollers-microprocessors/stm32f103.html)
+microcontroller and the [Rust](https://www.rust-lang.org/) programming language. However, the
+techniques demonstrated can be applied to other languages as well.
 
-Inside the examples, you will find two folders, one for the bootloader and one for the peripheral firmware application.
+The examples consist of two folders: one for the bootloader and another for the peripheral firmware application.
 
 ## Bootloader and Update protocol
 
-We recommend implementing the [DFU](https://www.usb.org/sites/default/files/DFU_1.1.pdf) or DFUse protocols for USB devices since fwupd implements this protocol. Our examples are based on the DFUse version of the protocol.
+For USB devices, we recommend implementing the [DFU](https://www.usb.org/sites/default/files/DFU_1.1.pdf)
+or DFUse protocols, as fwupd supports these protocols. Our examples utilize the DFUse version of the
+protocol.
 
-DFU defines two interfaces, one for the bootloader, which can write, erase (or read if enabled) the application space, and another interface (the runtime interface) which allows the host to request the application to jump back to the bootloader.
+DFU defines two interfaces: a bootloader interface that can write, erase, or read (if enabled) the
+application space, and a runtime interface that allows the host to request the application to jump
+back to the bootloader.
 
 ![DFU Bootloader and APP](./dfu.svg)
 
-We implement the DFU protocol using the [usbd-dfu](https://github.com/vitalyvb/usbd-dfu) Rust
-library, which is based on the [usb-device](https://github.com/rust-embedded-community/usb-device) stack, and we build the bootloaders based on the [usbd-dfu-example](https://github.com/vitalyvb/usbd-dfu-example) provided by the author.
+
+The DFU protocol is implemented using the [usbd-dfu](https://github.com/vitalyvb/usbd-dfu) Rust
+library, which is based on the [usb-device](https://github.com/rust-embedded-community/usb-device)
+stack. We build the bootloaders using the [usbd-dfu-example](https://github.com/vitalyvb/usbd-dfu-example)
+provided by the author.
 
 ## Application
 
-The applications implement the DFU runtime interface (it declares the device to be DFU enabled
-and accepts the DFU_DETACH and GET_STATUS commands)
+The applications implement the DFU runtime interface, declaring the device as DFU-enabled and
+accepting the DFU_DETACH and GET_STATUS commands.
 
-We implement the dfu runtime using the [usbd-dfu-rt](https://github.com/jedrzejboczar/usbd-dfu-rt) Rust library, which is based on the [usb-device](https://github.com/rust-embedded-community/usb-device) stack.
+We implement the DFU runtime using the [usbd-dfu-rt](https://github.com/jedrzejboczar/usbd-dfu-rt) Rust
+library, which is based on the [usb-device](https://github.com/rust-embedded-community/usb-device) stack.
 
-As part of building the application firmware we provide examples on the fwupd xml metadata
-as well as .cab file wrapping which then fwupd can consume from a vendor directory, i.e.:
+As part of the application firmware build process we provide examples of the fwupd xml metadata
+as well as .cab file wrapping. Fwupd can consume the resulting cab file from a vendor directory
+remote, i.e.:
 
 `$ cat /etc/fwupd/remotes.d/vendor-directory.conf`
 ```ini
@@ -44,39 +53,62 @@ MetadataURI=file:///usr/share/fwupd/remotes.d/vendor/firmware
 ApprovalRequired=false
 ```
 
-## Notes on USB
+## USB Considerations
 
-An USB host (in this case the RHEL device) identifies peripherals by their location
-in the USB tree as well as the VID/PID. Making sure that your VID/PID is unique
-for the specific type of peripheral is important to:
+A USB host (e.g., a RHEL device) identifies peripherals based on their location in the USB tree and
+their VID/PID. Ensuring a unique VID/PID for each specific peripheral type is essential to:
+
 * Avoid conflict with other peripheral drivers
-* Helping fwupd match firmwares to peripherals.
+* Facilitate fwupd's firmware-to-peripheral matching process
 
-For development and under very controlled environments you can pick your VID/PID combination,
-for mass produced and publicly sold peripherals [you need to obtain a VID from usb.org](https://www.usb.org/getting-vendor-id), or sublicense a PID from any registered vendor or your chip maker. This is similar for PCIe connected devices.
+In development and highly controlled environments, you can choose non conflicting VID/PID
+combination. For mass-produced and publicly sold peripherals, 
+[obtain a VID from usb.org](https://www.usb.org/getting-vendor-id)
+or sublicense a PID from any registered vendor or your chip maker. This process is
+similar for PCIe-connected devices.
 
-## Notes on bootloader security
+## USB Considerations
 
-The above examples should be considered just a reference on how to create your
-peripheral firmware, and probably a good startint point if you are planning to use Rust.
+A USB host (e.g., a RHEL device) identifies peripherals based on their location in the USB tree and
+their VID/PID. VID and PID are 16bit numbers, VIDs are assigned by usb.org to vendors.
 
-As a peripheral builder you may want to apply the following considerations depending
+Ensuring a unique VID/PID for each specific peripheral type is essential to:
+
+* Avoid conflicts with other peripheral drivers
+* Facilitate fwupd's firmware-to-peripheral matching process.
+
+In development and highly controlled environments, you can choose your VID/PID combination. For
+mass-produced and publicly sold peripherals, [obtain a VID from usb.org](https://www.usb.org/getting-vendor-id)
+or sublicense a PID from any registered vendor or your chip maker. This process is similar for
+PCIe-connected devices.
+
+## Bootloader Security Considerations
+
+Consider the examples provided as a reference for creating your peripheral firmware
+in a way that fwupd can handle updates and as a suitable starting point for using Rust.
+
+As a peripheral builder, you may want to apply the following considerations, depending
 on the environment or type of device you are building:
 
-* Adding encryption (decryption at bootloader) to the firmware blob, algorithms like XTEA
-  aren't completely secure but can help. AES is better if your device supports it.
-* Adding signature/verification to the firmware blobs if your deviced has hardware support.
+* Adding encryption (decryption at bootloader) to the firmware blob. While algorithms
+    like XTEA aren't completely secure, they can help. AES is a better option if your
+    device supports it.
+* Adding signature/verification to the firmware blobs if your device has hardware support.
 * Disabling JTAG access on boot.
 * Disabling read access (we do this by default).
 * Disabling JTAG read access on your device at programming time.
 
 ## Notes on BOOT ROM DFU Bootloaders
 
-Some MCUs include their own DFU bootloader in ROM. This avoids the need to write and maintain
-your own bootloader. But one disadvantage of using the ROM Bootloader is that 
-the VID:PID will be the chip manufaturer's pair, and your peripheral will have
-two pairs, one on bootloader mode, and one on the final application.
-You will need to indicate this via quirks to fwupd, and it's not recommended, since fwupd
-won't be able to recognize and reflash your device if anything goes wrong, since that
-VID/PID pair would be shared across many peripherals built on the same chip.
+Some MCUs include their own DFU bootloader in ROM. This eliminates the need to write and
+maintain your own bootloader. However, one disadvantage of using the ROM Bootloader is that
+the VID:PID of the bootloader will be the chip manufacturer's pair, and your peripheral
+will have two pairs:
 
+* one in bootloader mode
+* one in the final application.
+
+You will need to indicate this via quirks to fwupd. It is not recommended, as fwupd
+won't be able to recognize and reflash your device if anything goes wrong,
+since that bootloader VID/PID pair would be shared across many peripherals
+built on the same chip.
