@@ -1,7 +1,8 @@
 # STM32F103 Example DFU Bootloader for fwupd
 
-This bootloader is based on the `usbd-dfu` stack example bootloader published
-[here](https://github.com/vitalyvb/usbd-dfu-example).
+This bootloader is based on the [usbd-dfu](https://github.com/vitalyvb/usbd-dfu)
+stack example bootloader published [here](https://github.com/vitalyvb/usbd-dfu-example),
+from [vitalyvb](https://github.com/vitalyvb).
 
 It implements the DFUse extensions (DFU 1.1a), and declares a memory map via USB
 descriptor string in the following way:
