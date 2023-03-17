@@ -1,6 +1,6 @@
 # STM32F103 Example DFU Bootloader for fwupd
 
-This bootloader is based on the `usbd-dfup` stack example bootloader published
+This bootloader is based on the `usbd-dfu` stack example bootloader published
 [here](https://github.com/vitalyvb/usbd-dfu-example).
 
 It implements the DFUse extensions (DFU 1.1a), and declares a memory map via USB
@@ -72,3 +72,15 @@ file dfu-bootloader.bin md5 checksum: 387bbc85dd9a08288afe4f345ad9cd, stlink che
 The bootloader is located at 0x08000000, and uses 16KB. This means that the application
 should be compiled to run at 0x08004000 (see the memory.x linkerscript in the application
 and bootloader directories).
+
+
+Once flashed, you can see the device connecting via USB on the dmesg output:
+
+```
+[  109.423532] usb 2-2.12: new full-speed USB device number 7 using xhci_hcd
+[  109.554068] usb 2-2.12: New USB device found, idVendor=2b23, idProduct=e011, bcdDevice= 0.01
+[  109.554094] usb 2-2.12: New USB device strings: Mfr=1, Product=2, SerialNumber=3
+[  109.554098] usb 2-2.12: Product: DFU Bootloader for STM32F103C8
+[  109.554100] usb 2-2.12: Manufacturer: Red Hat
+[  109.554103] usb 2-2.12: SerialNumber: 23934513
+```

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright 2023 Miguel Angel Ajo <majopela@redhat.com> -->
+<component type="firmware">
+  <id>org.fwupd.myproduct.firmware</id>
+  <name>An example peripheral based on STM32F103C8</name>
+  <summary>Actually a device that exposes a VCP and not much more</summary>
+  <description>
+    <p>
+      Description of the firmware.
+    </p>
+  </description>
+  <provides>
+    <firmware type="flashed">e7336917-f91c-5583-a578-26336797863a</firmware> <!-- USB\VID_2B23&PID_E011 -->
+    <firmware type="flashed">bdfdb394-cfb2-5558-b894-3c14e048e6e3</firmware> <!-- USB\VID_2B23&PID_E011&REV_0001 -->
+  </provides>
+  <url type="homepage">https://github.com/redhat-et/firmware-on-the-edge/tree/main/firmware-examples/stm32f103</url>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <developer_name>Red Hat Inc.</developer_name>
+  <releases>
+    <release version="2.1" date="2023-02-08" urgency="medium">
+      <checksum target="content" filename="example.bin" />
+      <description>
+        <p>Makes your device work</p>
+      </description>
+    </release>
+  </releases>
+</component>

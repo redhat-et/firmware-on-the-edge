@@ -6,7 +6,7 @@ For development environment in this case, we recommend a Fedora machine with the
 packages installed:
 
 ```bash
-$ dnf install -y stlink openocd arm-none-eabi-binutils-cs
+$ dnf install -y stlink openocd arm-none-eabi-binutils-cs gcab libappstream-glib
 
 # install the community version of rust, and the ARM thumbv7m-none-eaby target
 $ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
@@ -34,7 +34,7 @@ a quirk file declaring a CounterpartGuid.
 
 ### Bootloader
 
-The [./bootloader](bootloader) directory contains the source code and necessary resources for
+The [bootloader](./bootloader/) directory contains the source code and necessary resources for
 building the DFU bootloader for your USB-based peripheral device. The bootloader allows firmware
 updates on the device using the DFU (Device Firmware Upgrade) protocol.
 
