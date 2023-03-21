@@ -39,6 +39,18 @@ example.bin: target/thumbv7m-none-eabi/release/example-stm32f103c8
 example.hex:target/thumbv7m-none-eabi/release/example-stm32f103c8
 	arm-none-eabi-objcopy -Oihex target/thumbv7m-none-eabi/release/example-stm32f103c8 example.hex
 
+rpmbuild/SOURCES:
+	mkdir -p ./rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+
+rpmbuild/SOURCES/$(TARGET)-${VERSION}.cab: rpmbuild/SOURCES $(CAB_FILES)
+	cp $(TARGET)-${VERSION}.cab rpmbuild/SOURCES
+
+srpm: rpmbuild/SOURCES/$(TARGET)-${VERSION}.cab example-firmware.spec
+	rpmbuild -bs --define "_topdir $(CURDIR)/rpmbuild" stm32f103-example-firmware.spec
+
+rpm: rpmbuild/SOURCES/$(TARGET)-${VERSION}.cab example-firmware.spec
+	rpmbuild -bs --define "_topdir $(CURDIR)/rpmbuild" stm32f103-example-firmware.spec
+
 $(TARGET)-${VERSION}.cab: $(CAB_FILES) check
 	gcab --create --nopath $@ $(CAB_FILES)
 
