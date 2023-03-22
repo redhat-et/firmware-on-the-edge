@@ -277,7 +277,7 @@ fn dfu_init() {
     let mut usb_dp = gpioa.pa12.into_push_pull_output(&mut gpioa.crh);
 
     usb_dp.set_low().ok();
-    cortex_m::asm::delay(1024);
+    cortex_m::asm::delay(1024*10);
 
     /* USB Peripheral */
 

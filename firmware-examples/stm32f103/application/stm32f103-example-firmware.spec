@@ -10,7 +10,7 @@ AutoReqProv: no
 %global firmwareStore /usr/share/fwupd/remotes.d/vendor/firmware
 
 Version: 2.1.0
-Release: 2
+Release: 3
 
 Summary: STM32F103 example firmware for use with fwupd.
 License: MIT

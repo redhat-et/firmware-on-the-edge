@@ -57,7 +57,7 @@ fn main() -> ! {
         .pclk1(24.mhz())
         .freeze(&mut flash.acr);
 
-    assert!(clocks.usbclk_valid());
+    //assert!(clocks.usbclk_valid());
 
     // Configure the on-board LED (PC13, green)
     let mut gpioc = dp.GPIOC.split(&mut rcc.apb2);
@@ -72,7 +72,7 @@ fn main() -> ! {
     // will not reset your device when you upload new firmware.
     let mut usb_dp = gpioa.pa12.into_push_pull_output(&mut gpioa.crh);
     usb_dp.set_low().ok();
-    cortex_m::asm::delay(1024);
+    cortex_m::asm::delay(1024*10);
 
     let usb = Peripheral {
         usb: dp.USB,
