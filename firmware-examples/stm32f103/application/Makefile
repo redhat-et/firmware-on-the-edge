@@ -45,10 +45,10 @@ rpmbuild/SOURCES:
 rpmbuild/SOURCES/$(TARGET)-${VERSION}.cab: rpmbuild/SOURCES $(CAB_FILES)
 	cp $(TARGET)-${VERSION}.cab rpmbuild/SOURCES
 
-srpm: rpmbuild/SOURCES/$(TARGET)-${VERSION}.cab example-firmware.spec
-	rpmbuild -bs --define "_topdir $(CURDIR)/rpmbuild" stm32f103-example-firmware.spec
+rpm: rpmbuild/SOURCES/$(TARGET)-${VERSION}.cab stm32f103-example-firmware.spec
+	rpmbuild -bb --define "_topdir $(CURDIR)/rpmbuild" stm32f103-example-firmware.spec
 
-rpm: rpmbuild/SOURCES/$(TARGET)-${VERSION}.cab example-firmware.spec
+srpm: rpmbuild/SOURCES/$(TARGET)-${VERSION}.cab stm32f103-example-firmware.spec
 	rpmbuild -bs --define "_topdir $(CURDIR)/rpmbuild" stm32f103-example-firmware.spec
 
 $(TARGET)-${VERSION}.cab: $(CAB_FILES) check
