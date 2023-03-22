@@ -1,0 +1,16 @@
+[Unit]
+Description=Auto update service for fwupd devices
+After=fwupd.service
+# Services consuming peripherals with firmware must
+# be configured to start "After" this unit.
+# alternatively use Before= here.
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/fwupdmgr update -y
+RemainAfterExit=yes
+
+[Install]
+
+WantedBy=multi-user.target
+
