@@ -152,7 +152,7 @@ dependencies = [
 
 [[package]]
 name = "example-stm32f103c8"
-version = "0.1.0"
+version = "2.2.0"
 dependencies = [
  "cortex-m 0.6.7",
  "cortex-m-rt",

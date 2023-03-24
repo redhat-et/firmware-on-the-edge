@@ -50,7 +50,7 @@ fn main() -> ! {
     let mut flash = dp.FLASH.constrain();
     let mut rcc = dp.RCC.constrain();
 
-    let clocks = rcc
+    let _clocks = rcc
         .cfgr
         .use_hse(8.mhz())
         .sysclk(48.mhz())
@@ -88,7 +88,7 @@ fn main() -> ! {
         .manufacturer("Red Hat Inc.")
         .product("A Custom Peripheral")
         .serial_number(get_serial_str())
-        .device_release(0x0201) // This is 2.01, you can use a version under the xml declared version
+        .device_release(0x0202) // This is 2.01, you can use a version under the xml declared version
                                 // for development purposes (allows flashing many times as the version
                                 // will always be "updateable")
         .self_powered(false)

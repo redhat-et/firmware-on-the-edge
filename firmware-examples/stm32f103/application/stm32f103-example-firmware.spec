@@ -9,14 +9,14 @@ AutoReqProv: no
 
 %global firmwareStore /usr/share/fwupd/remotes.d/vendor/firmware
 
-Version: 2.1.0
-Release: 3
+Version: 2.2.0
+Release: 1
 
 Summary: STM32F103 example firmware for use with fwupd.
 License: MIT
 Url: https://github.com/redhat-et/firmware-on-the-edge
 
-Source0: stm32f103-example-vcp-2.1.cab
+Source0: stm32f103-example-vcp-2.2.cab
 
 Requires: fwupd
 
@@ -57,5 +57,8 @@ fi
 
 
 %changelog
+* Wed Mar 22 2023 Miguel Angel Ajo Pelayo <majopela@redhat.com> . 2.2.0-1
+Update to 2.2
+
 * Tue Mar 21 2023 Miguel Angel Ajo Pelayo <majopela@redhat.com> . 2.1.0-2
 Create the firmware package

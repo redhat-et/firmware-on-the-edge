@@ -1,4 +1,4 @@
-	# Copyright (C) 2015 Richard Hughes <richard@hughsie.com>
+# Copyright (C) 2015 Richard Hughes <richard@hughsie.com>
 # Copyright (C) 2023 Miguel Angel Ajo <majopela@redhat.com>
 #
 # Licensed under the GNU General Public License Version 2
@@ -19,7 +19,7 @@
 #
 
 TARGET		= stm32f103-example-vcp
-VERSION		= 2.1
+VERSION		= 2.2
 
 all: $(TARGET)-$(VERSION).cab
 
@@ -42,7 +42,7 @@ example.hex:target/thumbv7m-none-eabi/release/example-stm32f103c8
 rpmbuild/SOURCES:
 	mkdir -p ./rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
 
-rpmbuild/SOURCES/$(TARGET)-${VERSION}.cab: rpmbuild/SOURCES $(CAB_FILES)
+rpmbuild/SOURCES/$(TARGET)-${VERSION}.cab: rpmbuild/SOURCES $(TARGET)-$(VERSION).cab
 	cp $(TARGET)-${VERSION}.cab rpmbuild/SOURCES
 
 rpm: rpmbuild/SOURCES/$(TARGET)-${VERSION}.cab stm32f103-example-firmware.spec
@@ -54,9 +54,11 @@ srpm: rpmbuild/SOURCES/$(TARGET)-${VERSION}.cab stm32f103-example-firmware.spec
 $(TARGET)-${VERSION}.cab: $(CAB_FILES) check
 	gcab --create --nopath $@ $(CAB_FILES)
 
+copr: clean srpm
+	copr-cli build @redhat-et/firmware-on-the-edge rpmbuild/SRPMS/stm32f103*.src.rpm
 
 all: $(TARGET)-${VERSION}.cab
 
 clean:
-	rm -rf target example.hex example.bin $(TARGET)-${VERSION}.cab
+	rm -rf target example.hex example.bin $(TARGET)-${VERSION}.cab rpmbuild
 

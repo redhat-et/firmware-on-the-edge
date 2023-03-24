@@ -1,6 +1,6 @@
 [package]
 name = "example-stm32f103c8"
-version = "0.1.0"
+version = "2.2.0"
 authors = ["Vadim Kaushan <admin@disasm.info>", "Matti Virkkunen <mvirkkunen@gmail.com>"]
 edition = "2018"
 
