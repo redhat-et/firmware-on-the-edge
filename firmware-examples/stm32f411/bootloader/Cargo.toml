@@ -22,17 +22,16 @@ cortex-m = "0.7.7"
 cortex-m-rt = "0.7.3"
 embedded-hal = "0.2.7"
 panic-halt = "0.2.0"
-
-# using fork while https://github.com/vitalyvb/usbd-dfu/pull/6 gets released
-usbd-dfu = { git = "https://github.com/mangelajo/usbd-dfu.git", branch = "main" }
+usbd-dfu = "0.3.0"
+embedded-storage = "0.3.0"
 
 [dependencies.stm32f4xx-hal]
 version = "0.15.0"
 features = ["rt", "stm32f411", "usb_fs"]
 
 [dependencies.usb-device]
-version = "0.2.8"
-# features = ["control-buffer-256"]
+version = "0.2.9"
+features = ["control-buffer-256"]
 
 [dependencies.stm32f4]
 version = "0.15.1"

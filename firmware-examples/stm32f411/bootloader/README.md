@@ -8,11 +8,11 @@ It implements the DFUse extensions (DFU 1.1a), and declares a memory map via USB
 descriptor string in the following way:
 
 ```rust
-const MEM_INFO_STRING: &'static str = "@Flash/0x08004000/48*001Kg";
+const MEM_INFO_STRING: &'static str = "@Flash/0x08008000/02*016Kg,01*064Kg,03*128Kg";
 ```
 
-The exposed map does not include the bootloader address space 0x08000000 - 0x08003fff since
-that confuses fwupd, and it doesn't make sense to expose since the bootloader
+The exposed map does not include the bootloader address space 0x08000000 - 0x08007fff
+since that confuses fwupd, and it doesn't make sense to expose since the bootloader
 can't update itself.
 
 This directory contains a Makefile which should help you flash the bootloader into a
@@ -31,7 +31,7 @@ cargo build --release
    Compiling dfu-bootloader v0.2.0 (/home/majopela/firmware/et/firmware-on-the-edge/firmware-examples/stm32f103/bootloader)
 ..
     Finished release [optimized + debuginfo] target(s) in 15.20s
-arm-none-eabi-objcopy -O binary target/thumbv7m-none-eabi/release/dfu-bootloader dfu-bootloader.bin
+arm-none-eabi-objcopy -O binary target/thumbv7em-none-eabihf/release/dfu-bootloader dfu-bootloader.bin
 ```
 
 You will get some warnings on `usb_vid_pid_is_for_private_testing_only` which is just a reminder
@@ -39,49 +39,64 @@ about setting your own USB VID/PID.
 
 ## Flashing
 
-You can flash your device with the bootloader using `make flash` if you have an STLINK connected via usb,
-connected to your board, and the board is powered on.
+You can flash your device with the bootloader using `make flash` via dfu-util or `st-flash` if you
+have an STLINKv3 connected to your board.
+
+i.e. connected to your board, and power your board while pushing the BOOT0 button, this will
+trigget the internal ROM DFU bootloader from the chip.
 
 ```bash
 $ make flash
+sudo dfu-util -d 0483:df11 -a 0 -s 0x08000000:leave -D dfu-bootloader.bin
+dfu-util 0.11
 
-st-flash write dfu-bootloader.bin 0x8000000
-st-flash 1.7.0
-2023-03-17T16:22:07 INFO usb.c: Unable to match requested speed 1800 kHz, using 1000 kHz
-2023-03-17T16:22:07 INFO common.c: F1xx Medium-density: 20 KiB SRAM, 128 KiB flash in at least 1 KiB pages.
-file dfu-bootloader.bin md5 checksum: 387bbc85dd9a08288afe4f345ad9cd, stlink checksum: 0x00104666
-2023-03-17T16:22:07 INFO common.c: Attempting to write 10056 (0x2748) bytes to stm32 address: 134217728 (0x8000000)
-2023-03-17T16:22:07 INFO common.c: Flash page at addr: 0x08000000 erased
-2023-03-17T16:22:07 INFO common.c: Flash page at addr: 0x08000400 erased
-2023-03-17T16:22:07 INFO common.c: Flash page at addr: 0x08000800 erased
-2023-03-17T16:22:07 INFO common.c: Flash page at addr: 0x08000c00 erased
-2023-03-17T16:22:08 INFO common.c: Flash page at addr: 0x08001000 erased
-2023-03-17T16:22:08 INFO common.c: Flash page at addr: 0x08001400 erased
-2023-03-17T16:22:08 INFO common.c: Flash page at addr: 0x08001800 erased
-2023-03-17T16:22:08 INFO common.c: Flash page at addr: 0x08001c00 erased
-2023-03-17T16:22:08 INFO common.c: Flash page at addr: 0x08002000 erased
-2023-03-17T16:22:08 INFO common.c: Flash page at addr: 0x08002400 erased
-2023-03-17T16:22:08 INFO common.c: Finished erasing 10 pages of 1024 (0x400) bytes
-2023-03-17T16:22:08 INFO common.c: Starting Flash write for VL/F0/F3/F1_XL
-2023-03-17T16:22:08 INFO flash_loader.c: Successfully loaded flash loader in sram
-2023-03-17T16:22:08 INFO flash_loader.c: Clear DFSR
- 10/ 10 pages written
-2023-03-17T16:22:09 INFO common.c: Starting verification of write complete
-2023-03-17T16:22:09 INFO common.c: Flash written and verified! jolly good!
+Copyright 2005-2009 Weston Schmidt, Harald Welte and OpenMoko Inc.
+Copyright 2010-2021 Tormod Volden and Stefan Schmidt
+This program is Free Software and has ABSOLUTELY NO WARRANTY
+Please report bugs to http://sourceforge.net/p/dfu-util/tickets/
+
+dfu-util: Warning: Invalid DFU suffix signature
+dfu-util: A valid DFU suffix will be required in a future dfu-util release
+Opening DFU capable USB device...
+Device ID 0483:df11
+Device DFU version 011a
+Claiming USB DFU Interface...
+Setting Alternate Interface #0 ...
+Determining device status...
+DFU state(10) = dfuERROR, status(10) = Device's firmware is corrupt. It cannot return to run-time (non-DFU) operations
+Clearing status
+Determining device status...
+DFU state(2) = dfuIDLE, status(0) = No error condition is present
+DFU mode device DFU version 011a
+Device returned transfer size 2048
+DfuSe interface name: "Internal Flash  "
+Downloading element to address = 0x08000000, size = 14340
+Erase           [=========================] 100%        14340 bytes
+Erase    done.
+Download        [=========================] 100%        14340 bytes
+Download done.
+File downloaded successfully
+Submitting leave request...
+Transitioning to dfuMANIFEST state
 ```
 
-The bootloader is located at 0x08000000, and uses 16KB. This means that the application
-should be compiled to run at 0x08004000 (see the memory.x linkerscript in the application
+The bootloader is located at 0x08000000, and uses 32KB. This means that the application
+should be compiled to run at 0x08008000 (see the memory.x linkerscript in the application
 and bootloader directories).
 
 
 Once flashed, you can see the device connecting via USB on the dmesg output:
 
 ```
-[  109.423532] usb 2-2.12: new full-speed USB device number 7 using xhci_hcd
-[  109.554068] usb 2-2.12: New USB device found, idVendor=2b23, idProduct=e011, bcdDevice= 0.01
-[  109.554094] usb 2-2.12: New USB device strings: Mfr=1, Product=2, SerialNumber=3
-[  109.554098] usb 2-2.12: Product: DFU Bootloader for STM32F103C8
-[  109.554100] usb 2-2.12: Manufacturer: Red Hat
-[  109.554103] usb 2-2.12: SerialNumber: 23934513
+[ 116.701570] usb 2-2.7: new full-speed USB device number 120 using xhci_hcd
+[ 116.843527] usb 2-2.7: New USB device found, idVendor=2b23, idProduct=e012, bcdDevice= 0.01
+[ 116.843555] usb 2-2.7: New USB device strings: Mfr=1, Product=2, SerialNumber=3
+[ 116.843560] usb 2-2.7: Product: DFU Bootloader for STM32F411CEU6
+[ 116.843564] usb 2-2.7: Manufacturer: Red Hat
+[ 116.843567] usb 2-2.7: SerialNumber: c6156613
 ```
+
+Now when powering up your device, you can use the KEY button if you want to force
+your DFU bootloader to stay instead of jumping to your final application when
+it's already flashed.
+

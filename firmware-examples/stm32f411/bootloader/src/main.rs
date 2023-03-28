@@ -1,10 +1,11 @@
-//! # DFU bootloader for use with fwupd and STM32F103C8
+//! # DFU bootloader for use with fwupd and STM32F411CEU6
+//!
 //! It is adapted from the example https://github.com/vitalyvb/usbd-dfu-example
 //! writen on top of the https://github.com/vitalyvb/usbd-dfu stack.
 //!
 //! The address map is updated so the bootloader space is not exposed
 //! to the host, and the start address begins right after the bootloader
-//! at 0x08004000, this works better for fwupd.
+//! at 0x08008000, this works better for fwupd.
 //!
 //! There are two modes of operation: minimal and DFU.
 //!
@@ -18,7 +19,7 @@
 //! > * Magic value in RAM (can be used by the firmware application to
 //!     force the bootloader to enter DFU mode).
 //!
-//! > * BOOT1 (PB2) state.
+//! > * KEY BUTTON (PA0) state.
 //!
 //! > * The first few bytes of a firmware (should look like a proper stack pointer).
 //!
@@ -45,18 +46,17 @@ use cortex_m_rt::entry;
 use stm32f4xx_hal::{
     pac,
     prelude::*,
-    timer::{Event, CounterUs},
 };
 
 use stm32f4xx_hal::gpio::{gpioc, Output, PushPull};
-use stm32f4xx_hal::pac::{interrupt, GPIOB, RCC, TIM2};
+use stm32f4xx_hal::pac::{interrupt, GPIOA, RCC};
 use stm32f4xx_hal::otg_fs::{UsbBus, USB, UsbBusType};
-use stm32f4xx_hal::{flash, gpio};
+use stm32f4xx_hal::flash::{FlashExt, LockedFlash, flash_sectors};
 use usb_device::{bus::UsbBusAllocator, prelude::*};
 use usbd_dfu::*;
 
 use core::mem::MaybeUninit;
-
+const TRANSFER_SIZE: usize = 256;
 static mut EP_MEMORY: [u32; 1024] = [0; 1024];
 
 /// If this value is found at the address 0x2000_0000 (beginning of RAM),
@@ -64,30 +64,25 @@ static mut EP_MEMORY: [u32; 1024] = [0; 1024];
 const KEY_STAY_IN_BOOT: u32 = 0xb0d42b89;
 
 /// Board flash configuration. MEM_INFO_STRING below must also be changed.
-const FLASH_SIZE:usize = 512;
-const FLASH_SIZE_BYTES: usize = (FLASH_SIZE as usize) * 1024;
 const BOOTLOADER_SIZE_BYTES: u32 = 32 * 1024;
 const FW_ADDRESS: u32 = 0x0800_8000;
 
 type LedType = gpioc::PC13<Output<PushPull>>;
 
-static mut LED: MaybeUninit<LedType> = MaybeUninit::uninit();
-static mut TIM: MaybeUninit<CounterUs<TIM2>> = MaybeUninit::uninit();
-
-//static mut FLASH: MaybeUninit<flash::Parts> = MaybeUninit::uninit();
 static mut USB_BUS: MaybeUninit<UsbBusAllocator<UsbBusType>> = MaybeUninit::uninit();
 static mut USB_DEVICE: MaybeUninit<UsbDevice<UsbBusType>> = MaybeUninit::uninit();
 static mut USB_DFU: MaybeUninit<DFUClass<UsbBusType, STM32Mem>> = MaybeUninit::uninit();
 
 pub struct STM32Mem{
- 
-    buffer: [u8; 128],
+    flash: LockedFlash,
+    buffer: [u8; TRANSFER_SIZE],
 }
 
-impl STM32Mem {
-    fn new() -> Self {
+impl STM32Mem{
+    fn new(flash: LockedFlash) -> Self {
         Self {
-            buffer: [0; 128],
+            flash,
+            buffer: [0; TRANSFER_SIZE],
         }
     }
 }
@@ -98,7 +93,7 @@ impl<'a> DFUMemIO for STM32Mem {
     const ERASE_TIME_MS: u32 = 50;
     const FULL_ERASE_TIME_MS: u32 = 50 * 112;
     const MANIFESTATION_TIME_MS: u32 = 1000;
-
+    const TRANSFER_SIZE: u16 = TRANSFER_SIZE as u16;
 
     // Internal bootloader says: "@Internal Flash  /0x08000000/04*016Kg,01*064Kg,03*128Kg", serial="356438913137"
     const MEM_INFO_STRING: &'static str = "@Flash/0x08008000/02*016Kg,01*064Kg,03*128Kg";
@@ -107,11 +102,10 @@ impl<'a> DFUMemIO for STM32Mem {
     const MANIFESTATION_TOLERANT: bool = false;
 
     fn read(&mut self, address: u32, length: usize) -> core::result::Result<&[u8], DFUMemError> {
-        return Err(DFUMemError::Address);
-        /*
-        let flash_top: u32 = 0x0800_0000 + FLASH_SIZE_BYTES as u32;
+       
+        let flash_top: u32 = (self.flash.address() + self.flash.len()) as u32;
 
-        if address < 0x0800_0000 {
+        if address < FW_ADDRESS {
             return Err(DFUMemError::Address);
         }
         if address >= flash_top {
@@ -123,15 +117,49 @@ impl<'a> DFUMemIO for STM32Mem {
         let mem = unsafe { &*core::ptr::slice_from_raw_parts(address as *const u8, len) };
 
         Ok(mem)
-        */
+       
     }
 
     fn erase(&mut self, address: u32) -> core::result::Result<(), DFUMemError> {
-        return Err(DFUMemError::Address);
+        
+        if address < self.flash.address() as u32 + BOOTLOADER_SIZE_BYTES {
+            return Err(DFUMemError::Address);
+        }
+
+        if address >= self.flash.address() as u32 + self.flash.len() as u32 {
+            return Err(DFUMemError::Address);
+        }
+
+        let flash_offset = address as usize - self.flash.address();
+        
+        match self.flash.sector(flash_offset) {
+            Some(sector) => {
+                // let's try to start by not accepting aligned addresses
+                if sector.offset != flash_offset {
+                    return Err(DFUMemError::Erase);
+                }
+                let mut unlocked_flash = self.flash.unlocked();
+                // TO-DO: perform better error translation here
+                unlocked_flash.erase(sector.number).unwrap();
+                return Ok(());
+            }
+            None => return Ok(()) 
+        }
     }
 
     fn erase_all(&mut self) -> Result<(), DFUMemError> {
-        Err(DFUMemError::Unknown)
+
+        for sector in flash_sectors(self.flash.len(), self.flash.dual_bank()) {
+             // skip erasing bootloader sectors
+             if sector.offset < BOOTLOADER_SIZE_BYTES as usize {
+                continue;
+            }
+            let mut unlocked_flash = self.flash.unlocked();
+            // TO-DO: perform better error translation here
+            unlocked_flash.erase(sector.number).unwrap();
+        }
+
+        return Ok(())
     }
 
     fn store_write_buffer(&mut self, src: &[u8]) -> core::result::Result<(), ()> {
@@ -141,8 +169,27 @@ impl<'a> DFUMemIO for STM32Mem {
 
     fn program(&mut self, address: u32, length: usize) -> core::result::Result<(), DFUMemError> {
         
-         return Err(DFUMemError::Address);
-       
+        if address < self.flash.address() as u32 {
+            return Err(DFUMemError::Address);
+        }
+
+        let offset = address - self.flash.address() as u32;
+
+        // skip programming bootloader sectors
+        if offset < BOOTLOADER_SIZE_BYTES {
+            return Err(DFUMemError::Address);
+        }
+
+        // skip programming beyond the end of flash
+        if offset as usize + length >= self.flash.len() {
+            return Err(DFUMemError::Address);
+        }
+
+        let mut unlocked_flash = self.flash.unlocked();
+        // TO-DO: perform better error translation here
+        unlocked_flash.program(offset as usize, self.buffer[..length].iter()).unwrap();
+
+        return Ok(())
     }
 
     fn manifestation(&mut self) -> Result<(), DFUManifestationError> {
@@ -182,16 +229,17 @@ fn get_serial_str() -> &'static str {
 
 /// Initialize, configure all peripherals, and setup USB DFU.
 /// Interrupts must be disabled.
-fn dfu_init() {
+fn dfu_init() -> LedType {
     // let cortex = cortex_m::Peripherals::take().unwrap();
     let device = unsafe { pac::Peripherals::steal() };
 
-    let mut rcc = device.RCC.constrain();
+    let rcc = device.RCC.constrain();
 
     let clocks = rcc
         .cfgr
         .use_hse(25.MHz())
         .sysclk(48.MHz())
+        .pclk1(8.MHz())
         .require_pll48clk()
         .freeze();
 
@@ -199,24 +247,8 @@ fn dfu_init() {
 
     // Acquire the GPIOC peripheral
     let gpioc = device.GPIOC.split();
-
     let mut led = gpioc.pc13.into_push_pull_output();
-    unsafe {
-        LED.as_mut_ptr().write(led);
-    }
-
-    // Set up a timer expiring after 1s
-    let mut timer = device.TIM2.counter(&clocks);
-    timer.start(1.secs()).unwrap();
-    
-    // Generate an interrupt when the timer expires
-    timer.listen(Event::Update);
-    
-    
-    unsafe {
-        TIM.as_mut_ptr().write(timer);
-    }
-
+    led.set_high();
 
     // BlackPill (check) board has a pull-up resistor on the D+ line.
     // Pull the D+ pin down to send a RESET condition to the USB bus.
@@ -246,9 +278,7 @@ fn dfu_init() {
 
 
     /* DFU */
-
-   // let fwr = flash.writer(flash::SectorSize::Sz1K, FLASH_SIZE);
-    let stm32mem = STM32Mem::new();
+    let stm32mem = STM32Mem::new(LockedFlash::new(device.FLASH));
 
     unsafe {
         USB_DFU.as_mut_ptr().write(DFUClass::new(&bus, stm32mem));
@@ -257,11 +287,11 @@ fn dfu_init() {
     /* USB device */
     let usb_vid_pid_is_for_private_testing_only = ();
 
-    let usb_dev = UsbDeviceBuilder::new(&bus, UsbVidPid(0x2b23, 0xe011))
+    let usb_dev = UsbDeviceBuilder::new(&bus, UsbVidPid(0x2b23, 0xe012))
         .manufacturer("Red Hat")
         .product("DFU Bootloader for STM32F411CEU6")
         .serial_number(get_serial_str())
-        .device_release(0x0001) // Intentionally keep a very low version 0.1, so that the main firmware
+        .device_release(0x0001)// Intentionally keep a very low version 0.1, so that the main firmware
                                 // will always have a higher version number.
         .self_powered(false)
         .max_power(250)
@@ -273,35 +303,33 @@ fn dfu_init() {
     }
 
     unsafe {
-        cortex_m::peripheral::NVIC::unmask(stm32f4xx_hal::pac::Interrupt::TIM2);
         cortex_m::peripheral::NVIC::unmask(stm32f4xx_hal::pac::Interrupt::OTG_FS);
     }
+
+    return led;
 }
 
 fn minimal_init() {
     unsafe {
-        // enable PWR, AFIO, GPIOB
+        // enable PWR
         (*RCC::ptr()).apb1enr.modify(|_, w| w.pwren().set_bit());
-     //   (*RCC::ptr())
-     //       .apb2enr
-     //       .modify(|_, w| w.afioen().set_bit().iopben().set_bit());
+        (*RCC::ptr()).ahb1enr.modify(|_, w| w.gpioaen().set_bit());
     }
 
     unsafe {
-        // P2 - Input, Floating
-      //  (*GPIOB::ptr())
-      //      .crl
-      //      .modify(|_, w| w.mode2().input().cnf2().open_drain());
+        // setup PA0 as input with pull-up
+        (*GPIOA::ptr()).moder.modify(|_, w| w.moder0().input());
+        (*GPIOA::ptr()).pupdr.modify(|_, w| w.pupdr0().pull_up());
     }
-
+ 
     cortex_m::asm::delay(100);
 }
 
 /// Check if DFU force external condition.
-/// Check BOOT1 jumper position.
+/// Check KEY BUTTON state.
 fn dfu_enforced() -> bool {
-    // check BOOT1, PB2 state
-    unsafe { (*GPIOB::ptr()).idr.read().idr2().bit_is_set() }
+    // check BOOT1, PA0 state
+    unsafe { (*GPIOA::ptr()).idr.read().idr0().bit_is_clear() }
 }
 
 /// Reset registers that were used for a
@@ -309,7 +337,8 @@ fn dfu_enforced() -> bool {
 /// default values before starting main firmware.
 fn quick_uninit() {
     unsafe {
-     //   (*GPIOB::ptr()).crl.reset();
+        (*GPIOA::ptr()).moder.reset();
+        (*GPIOA::ptr()).pupdr.reset();
         (*RCC::ptr()).apb1enr.reset();
         (*RCC::ptr()).apb2enr.reset();
     }
@@ -327,7 +356,7 @@ fn jump_to_app() -> ! {
 /// Check if FW looks OK and jump to it, or return.
 fn try_start_app() {
     let sp = unsafe { (FW_ADDRESS as *const u32).read() };
-    if sp & 0xfffe_0000 == 0x2000_0000 {
+    if sp & 0xfffc_0000 == 0x2000_0000 {
         quick_uninit();
         jump_to_app();
     }
@@ -369,13 +398,14 @@ fn main() -> ! {
 
     cortex_m::interrupt::disable();
 
-    dfu_init();
+    let mut led = dfu_init();
 
     cortex_m::asm::dsb();
     unsafe { cortex_m::interrupt::enable() };
 
     loop {
-        cortex_m::asm::wfi();
+        cortex_m::asm::delay(24*1024*1024);
+        led.toggle();
     }
 }
 
@@ -396,19 +426,6 @@ fn controller_reset() -> ! {
 
 #[interrupt]
 fn OTG_FS() {
-    usb_interrupt();
-}
-
-#[interrupt]
-fn TIM2() {
-    let led = unsafe { &mut *LED.as_mut_ptr() };
-    let tim = unsafe { &mut *TIM.as_mut_ptr() };
-
-    led.toggle();
-    let _ = tim.wait();
-}
-
-fn usb_interrupt() {
     let usb_dev = unsafe { &mut *USB_DEVICE.as_mut_ptr() };
     let dfu = unsafe { &mut *USB_DFU.as_mut_ptr() };
 

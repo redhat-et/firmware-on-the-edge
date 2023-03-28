@@ -19,11 +19,11 @@
 
 all: dfu-bootloader.bin
 
-target/thumbv7m-none-eabi/release/dfu-bootloader: src/main.rs Cargo.toml memory.x
+target/thumbv7em-none-eabihf/release/dfu-bootloader: src/main.rs Cargo.toml memory.x
 	cargo build --release
 
-dfu-bootloader.bin: target/thumbv7m-none-eabi/release/dfu-bootloader
-	arm-none-eabi-objcopy -O binary target/thumbv7m-none-eabi/release/dfu-bootloader dfu-bootloader.bin
+dfu-bootloader.bin: target/thumbv7em-none-eabihf/release/dfu-bootloader
+	arm-none-eabi-objcopy -O binary target/thumbv7em-none-eabihf/release/dfu-bootloader dfu-bootloader.bin
 
 st-flash: dfu-bootloader.bin
 	st-flash write dfu-bootloader.bin 0x8000000
@@ -31,8 +31,11 @@ st-flash: dfu-bootloader.bin
 flash: dfu-bootloader.bin
 	sudo dfu-util -d 0483:df11 -a 0 -s 0x08000000:leave -D dfu-bootloader.bin
 
+flash-erase: dfu-bootloader.bin
+	sudo dfu-util -d 0483:df11 -a 0 -s 0x08000000:mass-erase:force:leave -D dfu-bootloader.bin
+
 openocd-b: flash
-	openocd -c "set CPUTAPID 0x2ba01477" -f openocd.cfg
+	openocd -c -f openocd.cfg
 
 openocd: flash
 	openocd -f openocd.cfg

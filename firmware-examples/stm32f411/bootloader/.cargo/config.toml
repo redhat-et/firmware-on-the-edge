@@ -1,13 +1,13 @@
-[target.thumbv7m-none-eabi]
+[target.thumbv7em-none-eabihf]
 rustflags = [
   "-C", "link-arg=-Tlink.x",
 ]
 
 [alias]
-b = ["build", "--release", "--target", "thumbv7m-none-eabi"]
-bd = ["build", "--target", "thumbv7m-none-eabi"]
+b = ["build", "--release", "--target", "thumbv7em-none-eabihf"]
+bd = ["build", "--target", "thumbv7em-none-eabihf"]
 
 [build]
-target = "thumbv7m-none-eabi"
+target = "thumbv7em-none-eabihf"
 
 

@@ -1,0 +1,19 @@
+[package]
+name = "example-stm32f411ce"
+version = "2.2.0"
+authors = ["Miguel Angel Ajo Pelayo <majopela@redhat.com>", "Vadim Kaushan <admin@disasm.info>", "Matti Virkkunen <mvirkkunen@gmail.com>"]
+edition = "2018"
+license = "MIT"
+keywords = ["no-std", "usb-device", "dfu"]
+
+[dependencies]
+cortex-m = "0.7.7"
+cortex-m-rt = "0.7.3"
+stm32f4xx-hal = { version = "0.15.0", features = ["stm32f411", "usb_fs", "rt"] }
+stm32f4 = { version = "0.15.1", features = ["stm32f411", "rt"]}
+panic-halt= "0.2.0"
+usb-device = "0.2.9"
+usbd-serial = "0.1.1"
+embedded-hal = "0.2.7"
+usbd-dfu-rt = { version="0.3.0"}
+

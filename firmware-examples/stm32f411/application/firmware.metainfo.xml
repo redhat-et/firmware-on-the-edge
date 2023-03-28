@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright 2023 Miguel Angel Ajo <majopela@redhat.com> -->
+<component type="firmware">
+  <id>org.fwupd.myproduct.firmware.f411</id>
+  <name>An example peripheral based on STM32F411CEU6</name>
+  <summary>Actually a device that exposes a VCP and not much more</summary>
+  <description>
+    <p>
+      Description of the firmware.
+    </p>
+  </description>
+  <provides>
+    <firmware type="flashed">21151923-db14-5d8e-bf85-67bc96c4affe</firmware> <!-- USB\VID_2B23&PID_E012 -->
+    <firmware type="flashed">d9d42e6e-0400-54ba-8b58-37b935a1948d</firmware> <!-- USB\VID_2B23&PID_E012&REV_0001 -->
+  </provides>
+  <url type="homepage">https://github.com/redhat-et/firmware-on-the-edge/tree/main/firmware-examples/stm32f411</url>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <developer_name>Red Hat Inc.</developer_name>
+  <releases>
+    <release version="2.3" date="2023-03-22" urgency="medium">
+      <checksum target="content" filename="example.bin" />
+      <description>
+        <p>Makes your device work</p>
+      </description>
+    </release>
+  </releases>
+</component>
