@@ -4,6 +4,7 @@
 This repository contains firmware update examples for USB-based peripherals on RHEL systems.
 
 These examples utilize the [STM32F103](https://www.st.com/en/microcontrollers-microprocessors/stm32f103.html)
+and the [STM32F411](https://www.st.com/en/microcontrollers-microprocessors/stm32f411.html)
 microcontroller and the [Rust](https://www.rust-lang.org/) programming language. However, the
 techniques demonstrated can be applied to other languages as well.
 
@@ -62,7 +63,7 @@ their VID/PID. Ensuring a unique VID/PID for each specific peripheral type is es
 * Facilitate fwupd's firmware-to-peripheral matching process
 
 In development and highly controlled environments, you can choose non conflicting VID/PID
-combination. For mass-produced and publicly sold peripherals, 
+combination. For mass-produced and publicly sold peripherals,
 [obtain a VID from usb.org](https://www.usb.org/getting-vendor-id)
 or sublicense a PID from any registered vendor or your chip maker. This process is
 similar for PCIe-connected devices.
@@ -112,3 +113,4 @@ You will need to indicate this via quirks to fwupd. It is not recommended, as fw
 won't be able to recognize and reflash your device if anything goes wrong,
 since that bootloader VID/PID pair would be shared across many peripherals
 built on the same chip.
+
