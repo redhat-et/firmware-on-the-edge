@@ -1,1 +1,6 @@
-memory.16K.bootloader.x
+/* STM32F103C8T6 */
+MEMORY
+{
+    FLASH : ORIGIN = 0x08004000, LENGTH = 64K - 0x4000
+    RAM : ORIGIN = 0x20000010, LENGTH = 20K - 0x10
+}
