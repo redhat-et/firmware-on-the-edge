@@ -60,5 +60,5 @@ copr: clean srpm
 all: $(TARGET)-${VERSION}.cab
 
 clean:
-	rm -rf target example.hex example.bin $(TARGET)-${VERSION}.cab rpmbuild
+	rm -rf target example.hex example.bin *.cab rpmbuild
 
