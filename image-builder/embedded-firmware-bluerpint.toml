@@ -1,0 +1,61 @@
+name = "embedded-firmware"
+description = "An image that embeds firmware"
+version = "1.0.0"
+modules = [ ]
+groups = [ ]
+distro = "rhel-91"
+
+#[[firmware]]
+#source=container://quay.io/mangelajo/stm32f103-example-firmware:latest
+#
+
+#[[firmware]]
+#source=container://quay.io/mangelajo/stm32f411-example-firmware:latest
+#
+
+# the above commands are still not possible, and proposed in
+# https://issues.redhat.com/browse/COMPOSER-1930 for implementation
+
+[[packages]]
+name = "stm32f103-example-firmware"
+version="*"
+
+[[packages]]
+name = "stm32f411-example-firmware"
+version="*"
+
+[[packages]]
+name = "fwupd-auto-update"
+version="*"
+
+[[packages]]
+name = "minicom"
+version="*"
+
+[customizations]
+hostname = "firmware-edge.casa"
+
+[[customizations.user]]
+name="majopela"
+description="Miguel Angel"
+password="redhat"
+key="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIC9G5c1RKtB4IOLbKNJ7fC2ECflpXimr5cAK5F6xJiVe ajo@mbp-ajo.casa"
+groups = ["users", "wheel", "dialout"]
+
+[customizations.firewall.services]
+enabled=["ssh"]
+
+[customizations.services]
+enabled=["fwupd-auto-update"]
+
+# customizations.files doesn't seem to work on rhel9.1 yet, but added manually in the kickstart.ks
+[[customizations.files]]
+path="/etc/udev/rules.d/00-device-names.rules"
+mode="0644"
+user="root"
+group="root"
+data="""
+KERNEL=="ttyACM[0-9]*", SUBSYSTEM=="tty", ATTRS{idVendor}=="2b23", ATTRS{idProduct}=="e011", SYMLINK+="display", MODE="0660", GROUP="dialout"
+KERNEL=="ttyACM[0-9]*", SUBSYSTEM=="tty", ATTRS{idVendor}=="2b23", ATTRS{idProduct}=="e012", SYMLINK+="radar", MODE="0660", GROUP="dialout"
+"""
+

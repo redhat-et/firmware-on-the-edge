@@ -1,0 +1,7 @@
+id = "redhat-et-firmware"
+name = "Firmware RPM repo"
+type = "yum-baseurl"
+url = "https://download.copr.fedorainfracloud.org/results/@redhat-et/firmware-on-the-edge/rhel-9-x86_64/"
+check_gpg = false
+check_ssl = true
+system = false
