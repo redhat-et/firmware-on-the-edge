@@ -38,12 +38,11 @@ mod app {
     struct Local {
         button: gpio::PA0<Input>,
         led: gpio::PC13<Output<PushPull>>,
-        delayval: u32,
     }
 
     #[init]
     fn init(ctx: init::Context) -> (Shared, Local, init::Monotonics) {
-        static mut USB_BUS: Option<UsbBusAllocator<stm32f4xx_hal::otg_fs::UsbBus<USB>>,
+        static mut USB_BUS: Option<UsbBusAllocator<UsbBusType>,
         > = None;
         static mut EP_MEMORY: [u32; 1024] = [0; 1024];
 
@@ -108,15 +107,6 @@ mod app {
 
         led.set_high();
 
-        let mut vtor: u32 = 0;
-
-        /*    unsafe {
-            cortex_m::peripheral::Peripherals::steal().SCB.vtor.write(0x8000);
-            vtor = cortex_m::peripheral::Peripherals::steal().SCB.vtor.read();
-
-        }
-        */
-
         (
             Shared {
                 timer,
@@ -127,7 +117,6 @@ mod app {
             Local {
                 button,
                 led,
-                delayval: 2000_u32,
             },
             // Move the monotonic timer to the RTIC run-time, this enables
             // scheduling
