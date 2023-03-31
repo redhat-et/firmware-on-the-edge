@@ -276,7 +276,6 @@ fn dfu_init() -> LedType {
         &*USB_BUS.as_ptr()
     };
 
-
     /* DFU */
     let stm32mem = STM32Mem::new(LockedFlash::new(device.FLASH));
 
@@ -340,7 +339,7 @@ fn quick_uninit() {
         (*GPIOA::ptr()).moder.reset();
         (*GPIOA::ptr()).pupdr.reset();
         (*RCC::ptr()).apb1enr.reset();
-        (*RCC::ptr()).apb2enr.reset();
+        (*RCC::ptr()).ahb1enr.reset();
     }
 }
 
@@ -349,6 +348,11 @@ fn quick_uninit() {
 fn jump_to_app() -> ! {
     let vt = FW_ADDRESS as *const u32;
     unsafe {
+        cortex_m::asm::dsb();
+        cortex_m::asm::isb();
+        cortex_m::peripheral::Peripherals::steal().SCB.vtor.write(vt as u32);
+        cortex_m::asm::dsb();
+        cortex_m::asm::isb();
         cortex_m::asm::bootload(vt);
     }
 }
