@@ -21,6 +21,8 @@
 TARGET		= stm32f411-example-vcp
 TARGET_ELF  = target/thumbv7em-none-eabihf/release/example-stm32f411ce
 VERSION		= 2.2
+CONTAINER   = quay.io/mangelajo/firmware-stm32f411ce:${VERSION}
+
 
 all: $(TARGET)-$(VERSION).cab
 
@@ -57,6 +59,9 @@ $(TARGET)-${VERSION}.cab: $(CAB_FILES) check
 
 copr: clean srpm
 	copr-cli build @redhat-et/firmware-on-the-edge rpmbuild/SRPMS/stm32f411*.src.rpm
+
+container: $(TARGET)-$(VERSION).cab
+	../../build-firmware-container $(CONTAINER) $(TARGET)-$(VERSION).cab
 
 all: $(TARGET)-${VERSION}.cab
 

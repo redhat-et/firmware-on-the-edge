@@ -1,0 +1,28 @@
+#!/bin/sh
+set -e
+
+# first parameter is the name and tag of the container
+# the following parameters are the files to be included in the container
+
+IMAGE_TAG=$1
+shift
+
+
+usage() {
+    echo "Usage: $0 <image-tag> <file> [<file> ...]"
+    echo "Example: $0 quay.io/my-user/my-firmware:0.1.0 firmware.cab quirks.d/*"
+    exit 1
+}
+
+if [ -z "${IMAGE_TAG}" ] || [ -z $* ]; then
+    usage
+fi
+
+
+CONTAINER=$(buildah from --arch "embedded" --os "none" scratch)
+buildah add "${CONTAINER}" "$@"
+buildah config -l fwupd.cab.container=true "${CONTAINER}"
+buildah commit "${CONTAINER}" "${IMAGE_TAG}"
+buildah rm "${CONTAINER}"
+
+echo "Created container ${IMAGE_TAG}"

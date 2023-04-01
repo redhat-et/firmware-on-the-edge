@@ -19,7 +19,10 @@
 #
 
 TARGET		= stm32f103-example-vcp
+TARGET_ELF  = target/thumbv7m-none-eabi/release/example-stm32f103c8
 VERSION		= 2.2
+CONTAINER   = quay.io/mangelajo/firmware-stm32f103:${VERSION}
+
 
 all: $(TARGET)-$(VERSION).cab
 
@@ -30,14 +33,14 @@ CAB_FILES=							\
 check: firmware.metainfo.xml
 	appstream-util validate-relax $<
 
-target/thumbv7m-none-eabi/release/example-stm32f103c8: src/main.rs Cargo.toml memory.x
+$(TARGET_ELF): src/main.rs Cargo.toml memory.x
 	cargo build --release
 
-example.bin: target/thumbv7m-none-eabi/release/example-stm32f103c8
-	arm-none-eabi-objcopy -Obinary target/thumbv7m-none-eabi/release/example-stm32f103c8 example.bin
+example.bin: $(TARGET_ELF)
+	arm-none-eabi-objcopy -Obinary $(TARGET_ELF) example.bin
 
-example.hex:target/thumbv7m-none-eabi/release/example-stm32f103c8
-	arm-none-eabi-objcopy -Oihex target/thumbv7m-none-eabi/release/example-stm32f103c8 example.hex
+example.hex: $(TARGET_ELF)
+	arm-none-eabi-objcopy -Oihex $(TARGET_ELF) example.hex
 
 rpmbuild/SOURCES:
 	mkdir -p ./rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
@@ -56,6 +59,10 @@ $(TARGET)-${VERSION}.cab: $(CAB_FILES) check
 
 copr: clean srpm
 	copr-cli build @redhat-et/firmware-on-the-edge rpmbuild/SRPMS/stm32f103*.src.rpm
+
+
+container: $(TARGET)-$(VERSION).cab
+	../../build-firmware-container $(CONTAINER) $(TARGET)-$(VERSION).cab
 
 all: $(TARGET)-${VERSION}.cab
 
