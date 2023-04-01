@@ -1,6 +1,6 @@
 # STM32F411CEU6 based peripheral example
 
-For environment setup see [this readme](../).
+For environment setup see [this readme](../#environment-setup).
 
 ## Hardware
 

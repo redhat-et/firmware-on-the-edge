@@ -1,6 +1,6 @@
 # STM32F103C8 based peripheral example
 
-For environment setup see [this readme](../).
+For environment setup see [this readme](../#environment-setup).
 
 ## Hardware
 
