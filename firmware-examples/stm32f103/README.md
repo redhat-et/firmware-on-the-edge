@@ -1,30 +1,6 @@
 # STM32F103C8 based peripheral example
 
-## Environment
-
-For development environment in this case, we recommend a Fedora machine with the following
-packages installed:
-
-```bash
-$ dnf install -y stlink openocd arm-none-eabi-binutils-cs gcab libappstream-glib rpmbuild copr-cli
-
-# install the community version of rust, and the ARM thumbv7m-none-eaby target
-$ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-$ source "$HOME/.cargo/env"
-$ rustup target add thumbv7m-none-eabi
-
-```
-
-One hack to install gcab in RHEL9 is:
-```
-sudo subscription-manager repos --enable=codeready-builder-for-rhel-9-x86_64-rpms
-cd /tmp
-dnf download --source libgcab1
-sudo dnf builddep libgcab1
-sudo dnf install rpm-build
-sudo rpmbuild --rebuild libgcab*.src.rpm
-sudo dnf install ~/rpmbuild/RPMS/$(uname -m)/gcab* ~/rpmbuild/RPMS/$(uname -m)/libgcab*
-```
+For environment setup see [this readme](../).
 
 ## Hardware
 

@@ -10,6 +10,32 @@ techniques demonstrated can be applied to other languages as well.
 
 The examples consist of two folders: one for the bootloader and another for the peripheral firmware application.
 
+## Environment setup
+For development environment in this case, we recommend a Fedora machine with the following
+packages installed:
+
+```bash
+$ dnf install -y stlink openocd arm-none-eabi-binutils-cs gcab libappstream-glib rpmbuild copr-cli
+
+# install the community version of rust, and the ARM thumbv7m-none-eaby target
+$ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+$ source "$HOME/.cargo/env"
+$ rustup target add thumbv7m-none-eabi
+$ rustup target add thumbv7em-none-eabihf
+
+```
+
+One hack to install gcab in RHEL9 is:
+```bash
+sudo subscription-manager repos --enable=codeready-builder-for-rhel-9-x86_64-rpms
+cd /tmp
+dnf download --source libgcab1
+sudo dnf builddep libgcab1
+sudo dnf install rpm-build
+sudo rpmbuild --rebuild libgcab*.src.rpm
+sudo dnf install ~/rpmbuild/RPMS/$(uname -m)/gcab* ~/rpmbuild/RPMS/$(uname -m)/libgcab*
+```
+
 ## Bootloader and Update protocol
 
 For USB devices, we recommend implementing the [DFU](https://www.usb.org/sites/default/files/DFU_1.1.pdf)
