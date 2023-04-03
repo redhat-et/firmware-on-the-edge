@@ -5,16 +5,12 @@ authors = ["Vadim Kaushan <admin@disasm.info>", "Matti Virkkunen <mvirkkunen@gma
 edition = "2018"
 
 [dependencies]
-cortex-m = "0.6.7"
-cortex-m-rt = "0.6.13"
-stm32f1xx-hal = { version = "0.7", features = ["stm32f103", "stm32-usbd", "rt"] }
+cortex-m = "0.7.7"
+cortex-m-rt = "0.7.3"
+stm32f1xx-hal = { version = "0.10.0", features = ["stm32f103", "stm32-usbd", "rt"] }
 panic-halt= "0.2"
 usb-device = "0.2.8"
 usbd-serial = "0.1"
 usbd-webusb = "1.0.0"
 embedded-hal = "0.2.3"
 usbd-dfu-rt = { version="0.3.0"}
-
-[dev-dependencies]
-cortex-m-rtfm = "0.5"
-

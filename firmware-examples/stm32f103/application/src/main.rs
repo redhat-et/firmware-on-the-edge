@@ -8,13 +8,11 @@ use core::str;
 //use cortex_m::asm::delay;
 use cortex_m_rt::entry;
 
-use embedded_hal::digital::v2::OutputPin;
 use stm32f1xx_hal::usb::{Peripheral, UsbBus};
 use stm32f1xx_hal::{prelude::*, stm32};
 use usb_device::prelude::*;
-use usbd_serial::{SerialPort};
-use usbd_dfu_rt::{DfuRuntimeOps,DfuRuntimeClass};
-
+use usbd_dfu_rt::{DfuRuntimeClass, DfuRuntimeOps};
+use usbd_serial::SerialPort;
 
 pub struct DFUBootloader;
 
@@ -24,15 +22,15 @@ impl DfuRuntimeOps for DFUBootloader {
     const DETACH_TIMEOUT_MS: u16 = 5000;
     const CAN_UPLOAD: bool = false;
     const WILL_DETACH: bool = true;
-    
+
     fn detach(&mut self) {
         cortex_m::interrupt::disable();
 
         let cortex = unsafe { cortex_m::Peripherals::steal() };
-    
+
         let p = 0x2000_0000 as *mut u32;
         unsafe { p.write_volatile(KEY_STAY_IN_BOOT) };
-    
+
         cortex_m::asm::dsb();
         unsafe {
             // System reset request
@@ -48,31 +46,32 @@ fn main() -> ! {
     let dp = stm32::Peripherals::take().unwrap();
 
     let mut flash = dp.FLASH.constrain();
-    let mut rcc = dp.RCC.constrain();
+    let rcc = dp.RCC.constrain();
 
     let _clocks = rcc
         .cfgr
-        .use_hse(8.mhz())
-        .sysclk(48.mhz())
-        .pclk1(24.mhz())
+        .use_hse(8.MHz())
+        .sysclk(48.MHz())
+        .pclk1(24.MHz())
         .freeze(&mut flash.acr);
 
     //assert!(clocks.usbclk_valid());
 
     // Configure the on-board LED (PC13, green)
-    let mut gpioc = dp.GPIOC.split(&mut rcc.apb2);
-    let mut led = gpioc.pc13.into_push_pull_output(&mut gpioc.crh);
-    led.set_low().ok(); // Turn on
+    let mut gpioc = dp.GPIOC.split();
+    let mut board_led = gpioc.pc13.into_push_pull_output(&mut gpioc.crh);
+    board_led.set_low(); // Turn on
 
-    let mut gpioa = dp.GPIOA.split(&mut rcc.apb2);
+    let mut gpioa = dp.GPIOA.split();
+    let mut gpiob = dp.GPIOB.split();
 
     // BluePill board has a pull-up resistor on the D+ line.
     // Pull the D+ pin down to send a RESET condition to the USB bus.
     // This forced reset is needed only for development, without it host
     // will not reset your device when you upload new firmware.
     let mut usb_dp = gpioa.pa12.into_push_pull_output(&mut gpioa.crh);
-    usb_dp.set_low().ok();
-    cortex_m::asm::delay(1024*10);
+    usb_dp.set_low();
+    cortex_m::asm::delay(1024 * 10);
 
     let usb = Peripheral {
         usb: dp.USB,
@@ -89,12 +88,24 @@ fn main() -> ! {
         .product("A Custom Peripheral")
         .serial_number(get_serial_str())
         .device_release(0x0202) // This is 2.01, you can use a version under the xml declared version
-                                // for development purposes (allows flashing many times as the version
-                                // will always be "updateable")
+        // for development purposes (allows flashing many times as the version
+        // will always be "updateable")
         .self_powered(false)
         .max_power(250)
         .max_packet_size_0(64)
         .build();
+
+    let mut leds = [
+        gpiob.pb8.into_push_pull_output(&mut gpiob.crh).erase(), // erase abstracts the type
+        gpiob.pb6.into_push_pull_output(&mut gpiob.crl).erase(),
+        gpiob.pb5.into_push_pull_output(&mut gpiob.crl).erase(),
+        gpioa.pa10.into_push_pull_output(&mut gpioa.crh).erase(),
+        gpiob.pb15.into_push_pull_output(&mut gpiob.crh).erase(),
+    ];
+
+    for led in leds.iter_mut() {
+        led.set_low();
+    }
 
     loop {
         if !usb_dev.poll(&mut [&mut serial, &mut dfu]) {
@@ -106,36 +117,28 @@ fn main() -> ! {
 
         let mut buf = [0u8; 64];
 
-        led.set_low().ok(); // Turn on
-
         match serial.read(&mut buf) {
             Ok(count) if count > 0 => {
-                led.set_low().ok(); // Turn on
-
-                // Echo back in upper case
-                for c in buf[0..count].iter_mut() {
-                    if 0x61 <= *c && *c <= 0x7a {
-                        *c &= !0x20;
-                    }
+                if buf[0] < b'0' || buf[0] > b'5' {
+                    board_led.set_low(); // Turn on
+                    continue;
                 }
 
-                let mut write_offset = 0;
-                while write_offset < count {
-                    match serial.write(&buf[write_offset..count]) {
-                        Ok(len) if len > 0 => {
-                            write_offset += len;
-                        }
-                        _ => {}
+                let v = buf[0] - b'0' as u8;
+
+                for (i, led) in leds.iter_mut().enumerate() {
+                    if i >= v as usize {
+                        led.set_low();
+                    } else {
+                        led.set_high();
                     }
                 }
+                board_led.set_high(); // Turn off
             }
             _ => {}
         }
-        
-        led.set_high().ok(); // Turn off
     }
 }
-
 
 /// Returns device serial number as hex string slice.
 fn get_serial_str() -> &'static str {
@@ -158,7 +161,6 @@ fn get_serial_str() -> &'static str {
 
     unsafe { str::from_utf8_unchecked(serial) }
 }
-
 
 // Reads the serial number from the serial number field in the OTP
 // memory.
