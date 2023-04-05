@@ -1,0 +1,2 @@
+KERNEL=="ttyACM[0-9]*", SUBSYSTEM=="tty", ATTRS{idVendor}=="2b23", ATTRS{idProduct}=="e011", SYMLINK+="display", MODE="0660", GROUP="dialout"
+KERNEL=="ttyACM[0-9]*", SUBSYSTEM=="tty", ATTRS{idVendor}=="2b23", ATTRS{idProduct}=="e012", SYMLINK+="radar", MODE="0660", GROUP="dialout"
