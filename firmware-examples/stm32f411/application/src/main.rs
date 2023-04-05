@@ -4,7 +4,9 @@
 
 use panic_halt as _;
 
-#[rtic::app(device = stm32f4xx_hal::pac, peripherals = true)]
+use stm32f4xx_hal::interrupt::{SPI5, SPI4};
+
+#[rtic::app(device = stm32f4xx_hal::pac, peripherals = true, dispatchers = [SPI5, SPI4])]
 mod app {
 
     use core::str;
@@ -12,9 +14,7 @@ mod app {
         gpio,
         gpio::{Input, Output, PushPull},
         otg_fs::{UsbBus, UsbBusType, USB},
-        pac,
         prelude::*,
-        timer,
     };
 
     use usb_device::{class_prelude::*, prelude::*};
@@ -24,10 +24,15 @@ mod app {
 
     use arrform::{arrform, ArrForm};
 
+    use systick_monotonic::{*, fugit::MicrosDurationU64}; // Implements the `Monotonic` trait
+
+    // A monotonic timer to enable scheduling in RTIC
+    #[monotonic(binds = SysTick, default = true)]
+    type MyMono = Systick<10000>; // 10000 Hz / 0.1 ms granularity
+
     // Resources shared between tasks
     #[shared]
     struct Shared {
-        timer: timer::CounterMs<pac::TIM2>,
         usb_dev: UsbDevice<'static, UsbBusType>,
         serial: SerialPort<'static, UsbBusType>,
         dfu: DfuRuntimeClass<DFUBootloader>,
@@ -38,6 +43,9 @@ mod app {
     struct Local {
         button: gpio::PA0<Input>,
         led: gpio::PC13<Output<PushPull>>,
+        usnd_trigger: gpio::PB9<Output<PushPull>>,
+        usnd_echo: gpio::PB8<Input>,
+        usnd_start: fugit::Instant<u64,1,10000> ,
     }
 
     #[init]
@@ -46,26 +54,31 @@ mod app {
         > = None;
         static mut EP_MEMORY: [u32; 1024] = [0; 1024];
 
-        let dp = ctx.device;
-        let rcc = dp.RCC.constrain();
-        let clocks = rcc
+        let mut dp = ctx.device;
+        let mut syscfg = dp.SYSCFG.constrain();
+        let clocks = dp.RCC.constrain()
             .cfgr
             .use_hse(25.MHz())
             .sysclk(48.MHz())
             .require_pll48clk()
             .freeze();
 
+        let mono = Systick::new(ctx.core.SYST, 48_000_000);
+
         // Configure the on-board LED (PC13, blue)
         let gpioc = dp.GPIOC.split();
+        let gpiob = dp.GPIOB.split();
         let gpioa = dp.GPIOA.split();
         let mut led = gpioc.pc13.into_push_pull_output();
         let button = gpioa.pa0.into_pull_up_input();
+        
+        let usnd_trigger = gpiob.pb9.into_push_pull_output();
+        let mut usnd_echo = gpiob.pb8.into_pull_up_input();
 
-        let mut timer = dp.TIM2.counter_ms(&clocks);
-        timer.start(100.millis()).unwrap();
-        // Set up to generate interrupt when timer expires
-        timer.listen(timer::Event::Update);
-
+        usnd_echo.make_interrupt_source(&mut syscfg);
+        usnd_echo.trigger_on_edge(&mut dp.EXTI, gpio::Edge::RisingFalling);
+        usnd_echo.enable_interrupt(&mut dp.EXTI);
+        
         // BlackPill board has a pull-up resistor on the D+ line.
         // Pull the D+ pin down to send a RESET condition to the USB bus.
         // This forced reset is needed only for development, without it host
@@ -107,9 +120,13 @@ mod app {
 
         led.set_high();
 
+        // Schedule tasks
+        dfu_tick::spawn_after((100 as u64).millis()).unwrap();
+        radar::spawn_after((1000 as u64).millis()).unwrap();
+        let usnd_start = MyMono::zero();
+
         (
             Shared {
-                timer,
                 usb_dev,
                 serial,
                 dfu,
@@ -117,11 +134,39 @@ mod app {
             Local {
                 button,
                 led,
+                usnd_trigger,
+                usnd_echo,
+                usnd_start,
             },
             // Move the monotonic timer to the RTIC run-time, this enables
             // scheduling
-            init::Monotonics(),
+            init::Monotonics(mono),
         )
+    }
+
+    #[task(binds = EXTI9_5, priority = 2, shared = [serial], local = [led, usnd_echo, usnd_start])]
+    fn usnd_echo(mut ctx: usnd_echo::Context) {
+        let led = ctx.local.led;
+        let usnd_echo = ctx.local.usnd_echo;
+        let usnd_start = ctx.local.usnd_start;
+        let serial = &mut ctx.shared.serial;
+
+        if usnd_echo.is_high() {
+            led.set_low();
+            *usnd_start = monotonics::MyMono::now();
+        } else {
+            let duration = monotonics::MyMono::now() - *usnd_start;
+            led.set_high();
+            let speed_of_sound = 320; // m/s
+            let distance_cm = (duration.to_micros() * speed_of_sound * 100)  / (2 * 1_000_000);
+                    
+            let af = arrform!(64, "{:?}\n\r", distance_cm);
+            serial.lock(|serial| serial.write(af.as_bytes()).ok());
+            
+            
+        }
+
+        usnd_echo.clear_interrupt_pending_bit();
     }
 
     #[task(binds = OTG_FS, shared = [usb_dev, serial, dfu])]
@@ -146,17 +191,20 @@ mod app {
         });
     }
 
-    #[task(binds = TIM2, shared=[timer, dfu], local=[led])]
-    fn timer_expired(mut ctx: timer_expired::Context) {
-        // When Timer Interrupt Happens Two Things Need to be Done
-        // 1) Toggle the LED
-        // 2) Clear Timer Pending Interrupt
-
+    #[task(shared=[dfu])]
+    fn dfu_tick(mut ctx: dfu_tick::Context) {
+        dfu_tick::spawn_after((100 as u64).millis()).unwrap();
         ctx.shared.dfu.lock(|dfu| dfu.tick(100));
-        ctx.shared
-            .timer
-            .lock(|tim| tim.clear_interrupt(timer::Event::Update));
-        ctx.local.led.toggle();
+    }
+
+    #[task(local=[usnd_trigger])]
+    fn radar(ctx: radar::Context) {
+        radar::spawn_after((100 as u64).millis()).unwrap();
+       
+        // Trigger the radar measurement
+        ctx.local.usnd_trigger.set_high();
+        cortex_m::asm::delay(48_000_000/10_000); // 0.01ms up at least
+        ctx.local.usnd_trigger.set_low();
     }
 
     // Background task, runs whenever no other tasks are running
