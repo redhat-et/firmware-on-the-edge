@@ -25,4 +25,8 @@
       </description>
     </release>
   </releases>
+  <tags>
+      <!-- this is consumed by the BKC settings to allow us upgrade/downgrade of firmwares with changing protocols -->
+      <tag>product-protocol-1.0</tag>
+  </tags>
 </component>

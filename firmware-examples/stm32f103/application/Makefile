@@ -20,11 +20,11 @@
 
 TARGET		= stm32f103-example-vcp
 TARGET_ELF  = target/thumbv7m-none-eabi/release/example-stm32f103c8
-VERSION		= 2.2
+VERSION		= 2.3
 CONTAINER   = quay.io/mangelajo/firmware-stm32f103:${VERSION}
+CAB         = $(TARGET)-$(VERSION).cab
 
-
-all: $(TARGET)-$(VERSION).cab
+all: $(CAB)
 
 CAB_FILES=							\
 	example.bin			\
@@ -45,26 +45,29 @@ example.hex: $(TARGET_ELF)
 rpmbuild/SOURCES:
 	mkdir -p ./rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
 
-rpmbuild/SOURCES/$(TARGET)-${VERSION}.cab: rpmbuild/SOURCES $(TARGET)-$(VERSION).cab
+rpmbuild/SOURCES/$(CAB): rpmbuild/SOURCES $(CAB)
 	cp $(TARGET)-${VERSION}.cab rpmbuild/SOURCES
 
-rpm: rpmbuild/SOURCES/$(TARGET)-${VERSION}.cab stm32f103-example-firmware.spec
+rpm: rpmbuild/SOURCES/$(CAB) stm32f103-example-firmware.spec
 	rpmbuild -bb --define "_topdir $(CURDIR)/rpmbuild" stm32f103-example-firmware.spec
 
-srpm: rpmbuild/SOURCES/$(TARGET)-${VERSION}.cab stm32f103-example-firmware.spec
+srpm: rpmbuild/SOURCES/$(CAB) stm32f103-example-firmware.spec
 	rpmbuild -bs --define "_topdir $(CURDIR)/rpmbuild" stm32f103-example-firmware.spec
 
-$(TARGET)-${VERSION}.cab: $(CAB_FILES) check
+$(CAB): $(CAB_FILES) check
 	gcab --create --nopath $@ $(CAB_FILES)
+
+install: $(CAB)
+	cp $(CAB) /usr/share/fwupd/remotes.d/vendor/firmware/
 
 copr: clean srpm
 	copr-cli build @redhat-et/firmware-on-the-edge rpmbuild/SRPMS/stm32f103*.src.rpm
 
 
-container: $(TARGET)-$(VERSION).cab
-	../../build-firmware-container $(CONTAINER) $(TARGET)-$(VERSION).cab
+container: $(CAB)
+	../../build-firmware-container $(CONTAINER) $(CAB)
 
-all: $(TARGET)-${VERSION}.cab
+all: $(CAB)
 
 clean:
 	rm -rf target example.hex example.bin *.cab rpmbuild
