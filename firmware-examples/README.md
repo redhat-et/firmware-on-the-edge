@@ -15,7 +15,7 @@ For development environment in this case, we recommend a Fedora machine with the
 packages installed:
 
 ```bash
-$ dnf install -y stlink openocd arm-none-eabi-binutils-cs gcab libappstream-glib rpmbuild copr-cli
+$ dnf install -y stlink openocd arm-none-eabi-binutils-cs gcab libappstream-glib rpm-build copr-cli dfu-util
 
 # install the community version of rust, and the ARM thumbv7m-none-eaby target
 $ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
